@@ -33,4 +33,9 @@ czytget = "czytget.__main__:main"
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
+# czutils ships no py.typed marker, and yt-dlp has no stubs.
+[[tool.mypy.overrides]]
+module = [ "czutils.*", "yt_dlp.*" ]
+ignore_missing_imports = true
+
 ### aczutro ###################################################################

@@ -53,9 +53,9 @@ def main():
         logger.error(e)
         sys.exit(1)
     except Exception as e:
-       logger.error("unexpected exception:", e)
-       #raise e
-       sys.exit(2)
+        logger.error("unexpected exception:", e)
+        #raise e
+        sys.exit(2)
     #except
 #main
 

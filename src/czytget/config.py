@@ -86,23 +86,23 @@ class ServerConfig:
             try:
                 os.makedirs(self.dataDir, exist_ok=True)
             except OSError as e:
-                errorString = "ServerConfig: cannot create data dir '%s': %s" \
-                              % (self.dataDir, e)
+                errorString = f"ServerConfig: cannot create data dir " \
+                              f"'{self.dataDir}': {e}"
                 _logger.error(errorString)
-                raise ConfigError(errorString)
+                raise ConfigError(errorString) from e
             #except
         else:
             if not os.path.isdir(self.dataDir):
-                errorString = "ServerConfig: '%s' exists, but is not a directory" \
-                              % self.dataDir
+                errorString = f"ServerConfig: '{self.dataDir}' exists, " \
+                              f"but is not a directory"
                 _logger.error(errorString)
                 raise ConfigError(errorString)
             #if
         #else
         if os.path.exists(self.cookies):
             if os.path.isdir(self.cookies):
-                errorString = "ServerConfig: '%s' exists, but is not a directory" \
-                              % self.cookies
+                errorString = f"ServerConfig: '{self.cookies}' exists, " \
+                              f"but is not a directory"
                 _logger.error(errorString)
                 raise ConfigError(errorString)
             #if
@@ -266,8 +266,8 @@ def writeConfig(configFile: str,
     configWriter["client"] = clientConfig.configDict()
 
     os.makedirs(os.path.dirname(configFile), exist_ok=True)
-    with open(configFile, 'w') as configFile:
-        configWriter.write(configFile)
+    with open(configFile, 'w', encoding="utf-8") as f:
+        configWriter.write(f)
     #with
 #writeConfig
 
@@ -277,11 +277,15 @@ def parseConfig(configDir: str) -> tuple[ServerConfig, ClientConfig]:
     Parses file '.config' in directory configDir, and returns
     ServerConfig and ClientConfig objects that contain the parsed data.
 
+    If the config file does not exist, creates one with default values.
+
     :param configDir: Full path to config directory.  If not an absolute path,
                       understands it relative to ${HOME}.  If the HOME
                       environment variable is not defined, understands it
                       relative to the execution directory.
-    :return:
+    :return: a (ServerConfig, ClientConfig) pair; never None.
+    :raises: ConfigError, if the config file lacks section 'server' or section
+             'client', or if either section holds invalid data.
     """
     configDirFullPath = czsystem.resolveAbsPath(configDir)
     configFile = os.path.join(configDirFullPath, ".config")
@@ -291,31 +295,36 @@ def parseConfig(configDir: str) -> tuple[ServerConfig, ClientConfig]:
         return _makeDefaultConfig(configFile)
     #if
 
-    serverConfig = None
-    clientConfig = None
-
     configReader = configparser.ConfigParser()
     configReader.read(configFile)
 
-    if "server" in configReader.sections():
-        serverConfig = ServerConfig()
-        try:
-            serverConfig.fromConfigParser(configReader["server"])
-            serverConfig.verify()
-        except Exception as e:
-            raise ConfigError("bad server config: %s" % e)
-        #except
+    if "server" not in configReader.sections():
+        errorString = f"bad config file '{configFile}': no section 'server'"
+        _logger.error(errorString)
+        raise ConfigError(errorString)
     #if
 
-    if "client" in configReader.sections():
-        clientConfig = ClientConfig()
-        try:
-            clientConfig.fromConfigParser(configReader["client"])
-            clientConfig.verify()
-        except Exception as e:
-            raise ConfigError("bad client config: %s" % e)
-        #except
+    serverConfig = ServerConfig()
+    try:
+        serverConfig.fromConfigParser(configReader["server"])
+        serverConfig.verify()
+    except Exception as e:
+        raise ConfigError(f"bad server config: {e}") from e
+    #except
+
+    if "client" not in configReader.sections():
+        errorString = f"bad config file '{configFile}': no section 'client'"
+        _logger.error(errorString)
+        raise ConfigError(errorString)
     #if
+
+    clientConfig = ClientConfig()
+    try:
+        clientConfig.fromConfigParser(configReader["client"])
+        clientConfig.verify()
+    except Exception as e:
+        raise ConfigError(f"bad client config: {e}") from e
+    #except
 
     return serverConfig, clientConfig
 

@@ -116,9 +116,9 @@ class Worker(czthreading.ReactiveThread):
         """
         successful, errorMsg = self._ytdl.download(ytCode)
         if successful:
-            _logger.info("[%s] download succeeded:" % ytCode)
+            _logger.info(f"[{ytCode}] download succeeded:")
         else:
-            _logger.error("[%s] download failed:" % ytCode, errorMsg)
+            _logger.error(f"[{ytCode}] download failed:", errorMsg)
         #else
         return successful
     #__processCode
@@ -139,9 +139,9 @@ def _getSubdirs(root: str) -> list[str]:
     Returns a list of subdirectories of 'root' that contain at least one of
     the files in _FILE_CANDIDATES.
     """
-    return sorted(list([ os.path.basename(direc) \
-                         for direc, subdirs, files in os.walk(root) \
-                         if len(set(files).intersection(_FILE_CANDIDATES)) ]))
+    return sorted( os.path.basename(direc) \
+                   for direc, _, files in os.walk(root) \
+                   if set(files).intersection(_FILE_CANDIDATES) )
 #_getSubDirs
 
 
@@ -154,8 +154,7 @@ def _dumpFile(filename: str, q: set) -> None:
             pickle.dump(q, f)
         #with
     except Exception as e:
-        _logger.error("Server: failed to dump data to file '%s': %s"
-                      % (filename, e))
+        _logger.error(f"Server: failed to dump data to file '{filename}': {e}")
     #except
 #_dumpFile
 
@@ -170,16 +169,15 @@ def _loadFile(filename: str) -> set:
                 data = pickle.load(f)
             #with
         except Exception as e:
-            _logger.error("Server: failed to read data file '%s': %s"
-                          % (filename, e))
-            raise ServerError("ERROR: failed to read data file '%s': %s"
-                              % (filename, e))
+            _logger.error(f"Server: failed to read data file '{filename}': {e}")
+            raise ServerError(
+                f"ERROR: failed to read data file '{filename}': {e}") from e
         #except
-        if type(data) == set:
+        if isinstance(data, set):
             return data
         else:
-            _logger.error("Server: corrupted data file '%s'" % filename)
-            raise ServerError("ERROR: corrupted data file '%s'" % filename)
+            _logger.error(f"Server: corrupted data file '{filename}'")
+            raise ServerError(f"ERROR: corrupted data file '{filename}'")
         #else
     else:
         return set()
@@ -207,10 +205,10 @@ def _makeYTConfig(srcCookieFile: str, dstCookieFile:str, descriptions: bool) \
 
 def _printQueue(q: set, label: str) -> str:
     response = ""
-    if len(q):
+    if q:
         response = label
         for ytCode in q:
-            response = "%s\n  %s" % (response, ytCode)
+            response = f"{response}\n  {ytCode}"
         #for
     #if
     return response
@@ -239,18 +237,17 @@ class Server(czthreading.ReactiveThread):
             os.makedirs(self._dataDir)
             _logger.info("Server: writing data to", self._dataDir)
         except OSError as e:
-            errorString = "Server: cannot create data dir '%s': %s"\
-                          % (self._dataDir, e)
+            errorString = f"Server: cannot create data dir '{self._dataDir}': {e}"
             _logger.error(errorString)
-            raise ServerError(errorString)
+            raise ServerError(errorString) from e
         #except
 
         self._cookies = config.cookies
 
         self._workers = [
-            Worker("worker-%d" % i,
+            Worker(f"worker-{i}",
                    _makeYTConfig(self._cookies,
-                                 "%s-%d" % (self._cookies, i),
+                                 f"{self._cookies}-{i}",
                                  config.descriptions),
                    self)
             for i in range(config.numThreads) ]
@@ -260,10 +257,10 @@ class Server(czthreading.ReactiveThread):
         self._processingFile = os.path.join(self._dataDir, _PROCESSING_FILE)
         self._queuedFile = os.path.join(self._dataDir, _QUEUED_FILE)
 
-        self._failedCodes = set()
-        self._queuedCodes = set()
-        self._processingCodes = set()
-        self._finishedCodes = set()
+        self._failedCodes: set[str] = set()
+        self._queuedCodes: set[str] = set()
+        self._processingCodes: set[str] = set()
+        self._finishedCodes: set[str] = set()
 
         self.addMessageProcessor("MsgAck", self.processMsgAck)
         self.addMessageProcessor("MsgAddCode", self.processMsgAddCode)
@@ -279,7 +276,7 @@ class Server(czthreading.ReactiveThread):
 
 
     def threadCodePre(self):
-        print("czytget server v.%s" % __version__)
+        print(f"czytget server v.{__version__}")
         print(__author__)
         for worker in self._workers:
             worker.start()
@@ -302,6 +299,10 @@ class Server(czthreading.ReactiveThread):
 
 
     def processMsgAck(self, message: MsgAck):
+        """
+        Processes a message of type MsgAck, i.e. moves the acknowledged code
+        from the "processing" set to the "finished" or "failed" set.
+        """
         _logger.info("received", message)
         ytCode = message.ytCode
         success = message.success
@@ -325,17 +326,17 @@ class Server(czthreading.ReactiveThread):
         ytCode = message.ytCode
         if ytCode in self._processingCodes:
             if message.responseBuffer is not None:
-                message.responseBuffer.put("YT code '%s' already being processed"
-                                           % message.ytCode)
+                message.responseBuffer.put(
+                    f"YT code '{message.ytCode}' already being processed")
             #if
         elif ytCode in self._finishedCodes:
             if message.responseBuffer is not None:
-                message.responseBuffer.put("YT code '%s' already processed"
-                                           % message.ytCode)
+                message.responseBuffer.put(
+                    f"YT code '{message.ytCode}' already processed")
             #if
         else:
             if message.responseBuffer is not None:
-                message.responseBuffer.put("YT code '%s' queued" % message.ytCode)
+                message.responseBuffer.put(f"YT code '{message.ytCode}' queued")
             #if
             self._queuedCodes.add(ytCode)
             self._dumpQueued()
@@ -407,11 +408,15 @@ class Server(czthreading.ReactiveThread):
             _printQueue(self._queuedCodes,
                         cztext.colourise("queued codes:",
                                          foreground=cztext.Col16.YELLOW))
-        ] if len(s) ]))
+        ] if s ]))
     #processMsgList
 
 
     def processMsgAllocate(self, message: MsgAllocate):
+        """
+        Processes a message of type MsgAllocate, i.e. hands queued codes over
+        to all currently free worker threads.
+        """
         for worker in self._workers:
             if worker.free():
                 try:
@@ -429,6 +434,10 @@ class Server(czthreading.ReactiveThread):
 
 
     def processMsgSessionList(self, message: MsgSessionList):
+        """
+        Processes a message of type MsgSessionList, i.e. puts the names of all
+        available previous sessions into 'message.responseBuffer'.
+        """
         message.responseBuffer.put(
             '\n'.join(_getSubdirs(os.path.dirname(self._dataDir))))
     #processMsgDateList
@@ -441,7 +450,7 @@ class Server(czthreading.ReactiveThread):
         """
         _logger.info("loading", session)
         if not os.path.exists(session):
-            raise ServerError("ERROR: session '%s' does not exist" % session)
+            raise ServerError(f"ERROR: session '{session}' does not exist")
         #if
         if selection in [ MsgLoadAllSelection.ALL, MsgLoadAllSelection.PENDING_ONLY ]:
             self._queuedCodes.update(_loadFile(os.path.join(session, _PROCESSING_FILE)))
@@ -455,12 +464,16 @@ class Server(czthreading.ReactiveThread):
 
 
     def processMsgLoadSession(self, message: MsgLoadSession):
+        """
+        Processes a message of type MsgLoadSession, i.e. loads the codes stored
+        by one previous session.
+        """
         dataDir = os.path.join(os.path.dirname(self._dataDir), message.session)
         try:
             self._loadSession(dataDir, True)
             if message.responseBuffer is not None:
-                message.responseBuffer.put("successfully loaded session '%s'"
-                                           % message.session)
+                message.responseBuffer.put(
+                    f"successfully loaded session '{message.session}'")
             #if
         except ServerError as e:
             if message.responseBuffer is not None:
@@ -472,6 +485,10 @@ class Server(czthreading.ReactiveThread):
 
 
     def processMsgLoadAll(self, message: MsgLoadAll):
+        """
+        Processes a message of type MsgLoadAll, i.e. loads the codes stored by
+        all previous sessions, as selected by 'message.selection'.
+        """
         sessions = _getSubdirs(os.path.dirname(self._dataDir))
         try:
             for session in sessions:

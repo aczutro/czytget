@@ -132,7 +132,7 @@ class Client(czthreading.Thread, cmd.Cmd):
         if len(codes) == 0:
             self._error("add: YT code expected")
         else:
-            response = queue.Queue(maxsize=1)
+            response: queue.Queue[str] = queue.Queue(maxsize=1)
             for ytCode in codes:
                 if len(ytCode) == 11:
                     _logger.info("adding code", ytCode)
@@ -163,19 +163,19 @@ class Client(czthreading.Thread, cmd.Cmd):
         else:
             for file in files:
                 try:
-                    with open(file, "r") as f:
+                    with open(file, "r", encoding="utf-8") as f:
                         codes = f.read()
                     #with
                     if len(codes) == 0:
-                        self._error("file '%s' is empty" % file)
+                        self._error(f"file '{file}' is empty")
                     else:
                         _logger.info("adding file", file)
                         self.do_a(codes)
                     #else
                 except FileNotFoundError:
-                    self._error("file '%s' not found" % file)
+                    self._error(f"file '{file}' not found")
                 except PermissionError:
-                    self._error("no read permission for file '%s'" % file)
+                    self._error(f"no read permission for file '{file}'")
                 #except
             #for
         #else
@@ -211,7 +211,7 @@ class Client(czthreading.Thread, cmd.Cmd):
         :param args: ignored
         :return: False
         """
-        responseBuffer = queue.Queue()
+        responseBuffer: queue.Queue[str] = queue.Queue()
         self._server.comm(MsgList(responseBuffer))
         self._getResponse(responseBuffer)
         return False # on true, prompt loop will end
@@ -224,7 +224,7 @@ class Client(czthreading.Thread, cmd.Cmd):
         :param args: ignored
         :return: False
         """
-        responseBuffer = queue.Queue()
+        responseBuffer: queue.Queue[str] = queue.Queue()
         self._server.comm(MsgSessionList(responseBuffer))
         self._getResponse(responseBuffer)
         return False # on true, prompt loop will end
@@ -241,7 +241,7 @@ class Client(czthreading.Thread, cmd.Cmd):
         if len(sessions) == 0:
             self._error("add: YT code expected")
         else:
-            response = queue.Queue(maxsize=1)
+            response: queue.Queue[str] = queue.Queue(maxsize=1)
             for session in sessions:
                 _logger.info("loading session", session)
                 self._server.comm(MsgLoadSession(session, response))
@@ -258,7 +258,7 @@ class Client(czthreading.Thread, cmd.Cmd):
         :param args: ignored
         :return: False
         """
-        responseBuffer = queue.Queue()
+        responseBuffer: queue.Queue[str] = queue.Queue()
         self._server.comm(MsgLoadAll(MsgLoadAllSelection.ALL, responseBuffer))
         self._getResponse(responseBuffer)
         return False # on true, prompt loop will end
@@ -271,7 +271,7 @@ class Client(czthreading.Thread, cmd.Cmd):
         :param args: ignored
         :return: False
         """
-        responseBuffer = queue.Queue()
+        responseBuffer: queue.Queue[str] = queue.Queue()
         self._server.comm(MsgLoadAll(MsgLoadAllSelection.FINISHED_ONLY,
                                      responseBuffer))
         self._getResponse(responseBuffer)
@@ -285,7 +285,7 @@ class Client(czthreading.Thread, cmd.Cmd):
         :param args: ignored
         :return: False
         """
-        responseBuffer = queue.Queue()
+        responseBuffer: queue.Queue[str] = queue.Queue()
         self._server.comm(MsgLoadAll(MsgLoadAllSelection.PENDING_ONLY,
                                      responseBuffer))
         self._getResponse(responseBuffer)

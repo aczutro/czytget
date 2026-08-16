@@ -46,7 +46,6 @@ class MsgAllocate(czthreading.Message):
     """
     Sent by server to self to allocate a task to a free thread.
     """
-    pass
 #MsgAllocate
 
 
@@ -82,7 +81,6 @@ class MsgRetry(czthreading.Message):
     """
     Retry command sent by client to server.
     """
-    pass
 #MsgRetry
 
 
@@ -90,7 +88,6 @@ class MsgDiscard(czthreading.Message):
     """
     Discard command sent by client to server.
     """
-    pass
 #MsgDiscard
 
 
@@ -133,8 +130,11 @@ class MsgLoadSession(czthreading.Message):
 
 
 class MsgLoadAllSelection:
-    ALL = 0,
-    PENDING_ONLY = -1,
+    """
+    Selection constants for the "session load" commands.
+    """
+    ALL = 0
+    PENDING_ONLY = -1
     FINISHED_ONLY = 1
 #MsgLoadAllSelection
 

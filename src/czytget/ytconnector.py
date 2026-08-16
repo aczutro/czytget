@@ -81,10 +81,10 @@ class YTConfig:
     - descriptions: if True, download descriptions.
     """
 
-    def __self__(self):
+    def __init__(self):
         self.cookies = ""
         self.descriptions = True
-    #__self__
+    #__init__
 
 #YTConfig
 
@@ -145,7 +145,7 @@ class YTConnector:
     #close
 
 
-    def download(self, ytCode: str) -> tuple[int, str]:
+    def download(self, ytCode: str) -> tuple[bool, str]:
         """
         Downloads a YT code.
         :param ytCode: a valid YT code (individual video)
@@ -162,7 +162,7 @@ class YTConnector:
                 return False, "unknown yt_dlp failure"
             #else
         except YoutubeDLError as e:
-            _logger.warning("yt_dlp failed to download %s:" % ytCode, e)
+            _logger.warning(f"yt_dlp failed to download {ytCode}:", e)
             return False, str(e)
         #except
     #download
@@ -186,7 +186,7 @@ def _filter(lines: list):
 #_filter
 
 
-def getYTList(ytCode: str, cookies: str) -> tuple[set, str]:
+def getYTList(ytCode: str, cookies: str) -> tuple[set | None, str]:
     """
     Treats 'ytCode' like a playlist and extract the codes of all individual
     videos.  Returns the codes as a set.
@@ -211,13 +211,13 @@ def getYTList(ytCode: str, cookies: str) -> tuple[set, str]:
             #with
         #with
     except YoutubeDLError as e:
-        _logger.warning("yt_dlp failed to download %s:" % ytCode, e)
+        _logger.warning(f"yt_dlp failed to download {ytCode}:", e)
         return None, str(e)
     #except
 
     codes = set(_filter(formatInfo.getvalue().split(sep='\n')))
 
-    if len(codes):
+    if codes:
         return codes, ""
     else:
         return None, \
@@ -234,10 +234,10 @@ def mergeCookieFiles(outputFile: str, *filenames) -> None:
     :param outputFile: output file
     :param filenames: input files
     """
-    with open(outputFile, "w") as ofile:
+    with open(outputFile, "w", encoding="utf-8") as ofile:
         ofile.write("# Netscape HTTP Cookie File\n")
         for inputFile in filenames:
-            with open(inputFile, "r") as ifile:
+            with open(inputFile, "r", encoding="utf-8") as ifile:
                 for line in ifile:
                     if len(line):
                         if line[0] != '#':
