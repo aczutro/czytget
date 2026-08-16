@@ -17,6 +17,7 @@ import contextlib
 import io
 import logging
 import yt_dlp
+from yt_dlp.utils import YoutubeDLError
 
 
 _logger = czlogging.LoggingChannel("czytget.ytconnector",
@@ -158,7 +159,7 @@ class YTConnector:
                 _logger.warning("yt_dlp failed to download", ytCode)
                 return False, "unknown yt_dlp failure"
             #else
-        except yt_dlp.utils.YoutubeDLError as e:
+        except YoutubeDLError as e:
             _logger.warning("yt_dlp failed to download %s:" % ytCode, e)
             return False, str(e)
         #except
@@ -207,7 +208,7 @@ def getYTList(ytCode: str, cookies: str) -> tuple[set, str]:
                 #if
             #with
         #with
-    except yt_dlp.utils.YoutubeDLError as e:
+    except YoutubeDLError as e:
         _logger.warning("yt_dlp failed to download %s:" % ytCode, e)
         return None, str(e)
     #except

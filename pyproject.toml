@@ -12,16 +12,17 @@
 
 [tool.poetry]
 name = "czytget"
-version = "1.4.0"
+version = "1.4.0+"
 description = "A simple server to execute multiple parallel download jobs."
 authors = ["Alexander Czutro <github@czutro.ch>"]
 homepage = "https://github.com/aczutro/czytget"
 license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
-python  = "^3.12"
-czutils = "^1.4.0"
-yt-dlp  = "^2026.1.31"
+python     = "^3.12"
+czutils    = "^1.4.0"
+yt-dlp     = "^2026.7.4"
+yt-dlp-ejs = "^0.8.0"
 
 [tool.poetry.dev-dependencies]
 
