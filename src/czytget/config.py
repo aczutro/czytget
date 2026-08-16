@@ -9,14 +9,15 @@
 # <http://www.gnu.org/licenses>.
 #
 ################################################################### aczutro ###
-
-"""Config and command line parsing for czytget."""
-
-from czutils.utils import czcode, czlogging, czsystem
+"""
+Config and command line parsing for czytget.
+"""
 import configparser
 import os
 import os.path
 import typing
+
+from czutils.utils import czcode, czlogging, czsystem
 
 
 _logger = czlogging.LoggingChannel("czytget.config",

@@ -9,14 +9,16 @@
 # <http://www.gnu.org/licenses>.
 #
 ################################################################### aczutro ###
+"""
+czytget client
+"""
+import cmd
 
-"""czytget client"""
+from czutils.utils import czlogging, czthreading
 
 from .config import ClientConfig
 from .messages import *
 from .server import Server
-from czutils.utils import czlogging, czthreading
-import cmd
 
 
 _logger = czlogging.LoggingChannel("czytget.client",

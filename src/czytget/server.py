@@ -9,18 +9,20 @@
 # <http://www.gnu.org/licenses>.
 #
 ################################################################### aczutro ###
+"""
+czytget server
+"""
+import datetime
+import os
+import pickle
+import shutil
 
-"""czytget server"""
+from czutils.utils import czlogging, czthreading, cztext
 
 from . import __version__, __author__
 from .config import ServerConfig
 from .messages import *
 from .ytconnector import YTConfig, YTConnector, mergeCookieFiles, getYTList
-from czutils.utils import czlogging, czthreading, cztext
-import datetime
-import os
-import pickle
-import shutil
 
 
 _logger = czlogging.LoggingChannel("czytget.server",

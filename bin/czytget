@@ -12,10 +12,14 @@
 #
 ################################################################### aczutro ###
 
-import czytget
+# noinspection PyUnresolvedReferences
+
+import sys
+
+from czytget.__main__ import main
 
 if __name__ == '__main__':
-    czytget.czytget()
+    sys.exit(main())
 #if
 
 ### aczutro ###################################################################

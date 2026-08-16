@@ -9,14 +9,16 @@
 # <http://www.gnu.org/licenses>.
 #
 ################################################################### aczutro ###
+"""
+A simple server to execute multiple parallel download jobs.
+"""
+import sys
 
-"""A simple server to execute multiple parallel download jobs."""
+from czutils.utils import czlogging, czsystem, czthreading
 
 from .config import parseConfig, ConfigError, setLoggingOptions as setLoggingOptionsConfig
 from .server import Server, setLoggingOptions as setLoggingOptionsServer
 from .client import Client, setLoggingOptions as setLoggingOptionsClient
-from czutils.utils import czlogging, czsystem, czthreading
-import sys
 
 
 def main():
@@ -55,7 +57,7 @@ def main():
        #raise e
        sys.exit(2)
     #except
-#autoStr
+#main
 
 
 ### aczutro ###################################################################

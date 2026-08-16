@@ -9,15 +9,17 @@
 # <http://www.gnu.org/licenses>.
 #
 ################################################################### aczutro ###
-
-"""interface to yt downloading library"""
-
-from czutils.utils import czlogging, czcode
+"""
+interface to yt downloading library
+"""
 import contextlib
 import io
 import logging
+
 import yt_dlp
 from yt_dlp.utils import YoutubeDLError
+
+from czutils.utils import czlogging, czcode
 
 
 _logger = czlogging.LoggingChannel("czytget.ytconnector",

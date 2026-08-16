@@ -9,13 +9,12 @@
 # <http://www.gnu.org/licenses>.
 #
 ################################################################### aczutro ###
-
 """
 Messages sent between server and client, and server and its worker threads.
 """
+import queue
 
 from czutils.utils import czthreading
-import queue
 
 
 class MsgTask(czthreading.Message):
