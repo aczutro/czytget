@@ -12,6 +12,10 @@
 """
 Messages sent between server and client, and server and its worker threads.
 """
+# Every class in this module is a pure data carrier.  czthreading dispatches on
+# the message class name, so each message type must be a class of its own.
+# pylint: disable=too-few-public-methods
+
 import queue
 
 from czutils.utils import czthreading

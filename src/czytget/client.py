@@ -183,10 +183,10 @@ class Client(czthreading.Thread, cmd.Cmd):
     #do_f
 
 
-    def do_r(self, args) -> bool:
+    def do_r(self, _args) -> bool:
         """
         Implements RETRY command.
-        :param args: ignored
+        :param _args: ignored
         :return: False
         """
         self._server.comm(MsgRetry())
@@ -194,10 +194,10 @@ class Client(czthreading.Thread, cmd.Cmd):
     #do_r
 
 
-    def do_d(self, args) -> bool:
+    def do_d(self, _args) -> bool:
         """
         Implements RETRY command.
-        :param args: ignored
+        :param _args: ignored
         :return: False
         """
         self._server.comm(MsgDiscard())
@@ -205,10 +205,10 @@ class Client(czthreading.Thread, cmd.Cmd):
     #do_d
 
 
-    def do_l(self, args) -> bool:
+    def do_l(self, _args) -> bool:
         """
         Implements LIST command.
-        :param args: ignored
+        :param _args: ignored
         :return: False
         """
         responseBuffer: queue.Queue[str] = queue.Queue()
@@ -218,10 +218,10 @@ class Client(czthreading.Thread, cmd.Cmd):
     #do_l
 
 
-    def do_sls(self, args) -> bool:
+    def do_sls(self, _args) -> bool:
         """
         Implements SESSION LS command.
-        :param args: ignored
+        :param _args: ignored
         :return: False
         """
         responseBuffer: queue.Queue[str] = queue.Queue()
@@ -252,10 +252,10 @@ class Client(czthreading.Thread, cmd.Cmd):
     #do_sld
 
 
-    def do_sla(self, args) -> bool:
+    def do_sla(self, _args) -> bool:
         """
         Implements SESSION LOAD ALL command.
-        :param args: ignored
+        :param _args: ignored
         :return: False
         """
         responseBuffer: queue.Queue[str] = queue.Queue()
@@ -265,10 +265,10 @@ class Client(czthreading.Thread, cmd.Cmd):
     #do_sls
 
 
-    def do_slf(self, args) -> bool:
+    def do_slf(self, _args) -> bool:
         """
         Implements SESSION LOAD FINISHED command.
-        :param args: ignored
+        :param _args: ignored
         :return: False
         """
         responseBuffer: queue.Queue[str] = queue.Queue()
@@ -279,10 +279,10 @@ class Client(czthreading.Thread, cmd.Cmd):
     #do_slf
 
 
-    def do_slp(self, args) -> bool:
+    def do_slp(self, _args) -> bool:
         """
         Implements SESSION LOAD PENDING command.
-        :param args: ignored
+        :param _args: ignored
         :return: False
         """
         responseBuffer: queue.Queue[str] = queue.Queue()
@@ -293,10 +293,10 @@ class Client(czthreading.Thread, cmd.Cmd):
     #do_slp
 
 
-    def do_q(self, args) -> bool:
+    def do_q(self, _args) -> bool:
         """
         Implements QUIT command.
-        :param args: ignored
+        :param _args: ignored
         :return: True
         """
         _logger.info("terminating server")

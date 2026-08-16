@@ -366,7 +366,7 @@ class Server(czthreading.ReactiveThread):
     #processMsgAddList
 
 
-    def processMsgRetry(self, message: MsgRetry):
+    def processMsgRetry(self, _message: MsgRetry):
         """
         Processes a message of type MsgRetry, i.e. moves all failed code back
         to the processing queue.
@@ -379,7 +379,7 @@ class Server(czthreading.ReactiveThread):
     #processMsgRetry
 
 
-    def processMsgDiscard(self, message: MsgDiscard):
+    def processMsgDiscard(self, _message: MsgDiscard):
         """
         Processes a message of type MsgRetry, i.e. moves all failed code back
         to the processing queue.
@@ -412,7 +412,7 @@ class Server(czthreading.ReactiveThread):
     #processMsgList
 
 
-    def processMsgAllocate(self, message: MsgAllocate):
+    def processMsgAllocate(self, _message: MsgAllocate):
         """
         Processes a message of type MsgAllocate, i.e. hands queued codes over
         to all currently free worker threads.
