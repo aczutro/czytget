@@ -289,7 +289,7 @@ def parseConfig(configDir: str) -> tuple[ServerConfig, ClientConfig]:
     try:
         serverConfig.fromConfigParser(configReader["server"])
         serverConfig.verify()
-    except Exception as e:
+    except (ConfigError, ValueError, configparser.Error) as e:
         raise ConfigError(f"bad server config: {e}") from e
     #except
 
@@ -303,7 +303,7 @@ def parseConfig(configDir: str) -> tuple[ServerConfig, ClientConfig]:
     try:
         clientConfig.fromConfigParser(configReader["client"])
         clientConfig.verify()
-    except Exception as e:
+    except (ConfigError, ValueError, configparser.Error) as e:
         raise ConfigError(f"bad client config: {e}") from e
     #except
 

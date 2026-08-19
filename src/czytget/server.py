@@ -137,7 +137,7 @@ def _dumpFile(filename: str, q: set) -> None:
         with open(filename, "wb") as f:
             pickle.dump(q, f)
         #with
-    except Exception as e:
+    except (OSError, pickle.PicklingError) as e:
         _logger.error("Server: failed to dump data to file '%s': %s", filename, e)
     #except
 #_dumpFile
@@ -152,7 +152,7 @@ def _loadFile(filename: str) -> set:
             with open(filename, "rb") as f:
                 data = pickle.load(f)
             #with
-        except Exception as e:
+        except (OSError, pickle.UnpicklingError, EOFError) as e:
             _logger.error("Server: failed to read data file '%s': %s", filename, e)
             raise ServerError(
                 f"ERROR: failed to read data file '{filename}': {e}") from e
@@ -178,7 +178,14 @@ def _makeYTConfig(srcCookieFile: str, dstCookieFile:str, descriptions: bool) \
     :returns: a YTConfig
     """
     if os.path.exists(srcCookieFile):
-        shutil.copyfile(srcCookieFile, dstCookieFile)
+        try:
+            shutil.copyfile(srcCookieFile, dstCookieFile)
+        except OSError as e:
+            # Not fatal: the worker then starts without cookies, exactly as it
+            # does when there is no cookie file to begin with.
+            _logger.error("cannot copy cookie file '%s' to '%s': %s",
+                          srcCookieFile, dstCookieFile, e)
+        #except
     #if
     ans = YTConfig()
     ans.cookies = dstCookieFile

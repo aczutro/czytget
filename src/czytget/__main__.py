@@ -14,11 +14,12 @@
 A simple server to execute multiple parallel download jobs.
 """
 import logging
+import signal
 import sys
 
 from .client import Client
 from .config import ConfigError, parseConfig
-from .server import Server
+from .server import Server, ServerError
 
 
 _logger = logging.getLogger(__name__)
@@ -70,11 +71,26 @@ def _setUpLogging() -> None:
 #_setUpLogging
 
 
+def _disableKeyboardInterrupt() -> None:
+    """
+    Makes the process ignore ^C.
+
+    Client and server share one process, so a ^C that was meant for the client
+    would tear the worker threads down with it, leaving the session
+    half-finished and the per-worker cookie files unmerged.  'q' and ^D remain
+    as the ways out of the shell, and both shut the server down in an orderly
+    fashion.
+    """
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+#_disableKeyboardInterrupt
+
+
 def main():
     """
     Main routine of the integrated czytget server/client.
     """
     _setUpLogging()
+    _disableKeyboardInterrupt()
 
     try:
         serverConfig, clientConfig = parseConfig(".config/czytget")
@@ -94,8 +110,8 @@ def main():
     except ConfigError as e:
         print(f"error: {e}", file=sys.stderr)
         sys.exit(1)
-    except Exception as e:
-        print(f"error: unexpected exception: {e}", file=sys.stderr)
+    except (ServerError, OSError) as e:
+        print(f"error: {e}", file=sys.stderr)
         sys.exit(2)
     #except
 #main

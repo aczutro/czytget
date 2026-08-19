@@ -99,8 +99,16 @@ class YTConnector:
         DO NOT use download(...) after this.
         """
         if self._ydl is not None:
-            self._ydl.__exit__()
-            #_logger.info("yt_dlp closed")
+            try:
+                self._ydl.close()
+            except YoutubeDLError as e:
+                # Raised, for instance, when the cookie file cannot be parsed.
+                # There is nothing left to salvage at this point, and close()
+                # is also called from __del__, where an exception would escape
+                # into the interpreter's unraisable hook instead of anywhere
+                # this program could handle it.
+                _logger.error("yt_dlp failed to close cleanly: %s", e)
+            #except
         #if
         self._ydl = None
     #close
