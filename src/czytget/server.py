@@ -13,39 +13,22 @@
 czytget server
 """
 import datetime
+import logging
 import os
 import pickle
 import shutil
 
-from czutils.utils import czlogging, czthreading, cztext
+from czutils.utils import czthreading, cztext
 
 from . import __version__, __author__
 from .config import ServerConfig
 from .messages import *
+from .utils import UIOutput
 from .ytconnector import YTConfig, YTConnector, mergeCookieFiles, getYTList
 
 
-_logger = czlogging.LoggingChannel("czytget.server",
-                                   czlogging.LoggingLevel.SILENT,
-                                   colour=True)
-
-def setLoggingOptions(level: int, colour=True) -> None:
-    """
-    Sets this module's logging level.  If not called, the logging level is
-    SILENT.
-
-    :param level: One of the following:
-                  - czlogging.LoggingLevel.INFO
-                  - czlogging.LoggingLevel.WARNING
-                  - czlogging.LoggingLevel.ERROR
-                  - czlogging.LoggingLevel.SILENT
-
-    :param colour: If true, use colour in log headers.
-    """
-    global _logger
-    _logger = czlogging.LoggingChannel("czytget.server", level, colour=colour)
-
-#setLoggingOptions
+_ui = UIOutput()
+_logger = logging.getLogger(__name__)
 
 
 class ServerError(Exception):
@@ -102,25 +85,26 @@ class Worker(czthreading.ReactiveThread):
         """
         self._free = False
         ytCode = message.ytCode
-        success = self._processCode(ytCode)
-        self._server.comm(MsgAck(ytCode, success))
+        success, errorMsg = self._processCode(ytCode)
+        self._server.comm(MsgAck(ytCode, success, errorMsg))
         self._free = True
     #processMsgTask
 
 
-    def _processCode(self, ytCode: str) -> bool:
+    def _processCode(self, ytCode: str) -> tuple[bool, str]:
         """
         Processes a YT code.
 
-        :returns: True if successful.
+        :returns: True and an empty string if successful.
+                  Else, False and the back end's error description.
         """
         successful, errorMsg = self._ytdl.download(ytCode)
         if successful:
-            _logger.info(f"[{ytCode}] download succeeded:")
+            _logger.info("[%s] download succeeded", ytCode)
         else:
-            _logger.error(f"[{ytCode}] download failed:", errorMsg)
+            _logger.error("[%s] download failed: %s", ytCode, errorMsg)
         #else
-        return successful
+        return successful, errorMsg
     #__processCode
 
 #Worker
@@ -154,7 +138,7 @@ def _dumpFile(filename: str, q: set) -> None:
             pickle.dump(q, f)
         #with
     except Exception as e:
-        _logger.error(f"Server: failed to dump data to file '{filename}': {e}")
+        _logger.error("Server: failed to dump data to file '%s': %s", filename, e)
     #except
 #_dumpFile
 
@@ -169,14 +153,14 @@ def _loadFile(filename: str) -> set:
                 data = pickle.load(f)
             #with
         except Exception as e:
-            _logger.error(f"Server: failed to read data file '{filename}': {e}")
+            _logger.error("Server: failed to read data file '%s': %s", filename, e)
             raise ServerError(
                 f"ERROR: failed to read data file '{filename}': {e}") from e
         #except
         if isinstance(data, set):
             return data
         else:
-            _logger.error(f"Server: corrupted data file '{filename}'")
+            _logger.error("Server: corrupted data file '%s'", filename)
             raise ServerError(f"ERROR: corrupted data file '{filename}'")
         #else
     else:
@@ -235,7 +219,7 @@ class Server(czthreading.ReactiveThread):
                            datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
         try:
             os.makedirs(self._dataDir)
-            _logger.info("Server: writing data to", self._dataDir)
+            _logger.info("Server: writing data to %s", self._dataDir)
         except OSError as e:
             errorString = f"Server: cannot create data dir '{self._dataDir}': {e}"
             _logger.error(errorString)
@@ -262,7 +246,10 @@ class Server(czthreading.ReactiveThread):
         self._processingCodes: set[str] = set()
         self._finishedCodes: set[str] = set()
 
+        self._notificationBuffers: list[queue.Queue] = []
+
         self.addMessageProcessor("MsgAck", self.processMsgAck)
+        self.addMessageProcessor("MsgSubscribe", self.processMsgSubscribe)
         self.addMessageProcessor("MsgAddCode", self.processMsgAddCode)
         self.addMessageProcessor("MsgAddList", self.processMsgAddList)
         self.addMessageProcessor("MsgRetry", self.processMsgRetry)
@@ -276,8 +263,8 @@ class Server(czthreading.ReactiveThread):
 
 
     def threadCodePre(self):
-        print(f"czytget server v.{__version__}")
-        print(__author__)
+        _ui.info(f"czytget server v.{__version__}")
+        _ui.info(__author__)
         for worker in self._workers:
             worker.start()
         #for
@@ -285,7 +272,7 @@ class Server(czthreading.ReactiveThread):
 
 
     def threadCodePost(self):
-        print("stopping czytget server")
+        _ui.info("stopping czytget server")
         cookieFiles = []
         for worker in self._workers:
             cookieFiles.append(worker.cookieFile())
@@ -303,7 +290,7 @@ class Server(czthreading.ReactiveThread):
         Processes a message of type MsgAck, i.e. moves the acknowledged code
         from the "processing" set to the "finished" or "failed" set.
         """
-        _logger.info("received", message)
+        _logger.info("received %s", message)
         ytCode = message.ytCode
         success = message.success
         self._processingCodes.remove(ytCode)
@@ -311,10 +298,32 @@ class Server(czthreading.ReactiveThread):
             self._finishedCodes.add(ytCode)
         else:
             self._failedCodes.add(ytCode)
+            self._notify(f"[{ytCode}] download failed: {message.errorMsg}")
         #if
         self._dumpAll()
         self.comm(MsgAllocate())
     #processMsgAck
+
+
+    def processMsgSubscribe(self, message: MsgSubscribe):
+        """
+        Processes a message of type MsgSubscribe, i.e. registers the sender's
+        notification buffer.
+        """
+        self._notificationBuffers.append(message.notificationBuffer)
+    #processMsgSubscribe
+
+
+    def _notify(self, notification: str) -> None:
+        """
+        Pushes a notification to all subscribed clients.  Unlike a command
+        response, this is unsolicited: it is sent when the event occurs, not
+        when the client asks.
+        """
+        for notificationBuffer in self._notificationBuffers:
+            notificationBuffer.put(notification)
+        #for
+    #_notify
 
 
     def processMsgAddCode(self, message: MsgAddCode):
@@ -448,7 +457,7 @@ class Server(czthreading.ReactiveThread):
         :param selection: one of the constants defined in class
                           MsgLoadAllSelection
         """
-        _logger.info("loading", session)
+        _logger.info("loading %s", session)
         if not os.path.exists(session):
             raise ServerError(f"ERROR: session '{session}' does not exist")
         #if

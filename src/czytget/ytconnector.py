@@ -19,57 +19,18 @@ import logging
 import yt_dlp
 from yt_dlp.utils import YoutubeDLError
 
-from czutils.utils import czlogging, czcode
+from czutils.utils import czcode
 
 
-_logger = czlogging.LoggingChannel("czytget.ytconnector",
-                                   czlogging.LoggingLevel.SILENT,
-                                   colour=True)
-
-def setLoggingOptions(level: int, colour=True) -> None:
-    """
-    Sets this module's logging level.  If not called, the logging level is
-    SILENT.
-
-    :param level: One of the following:
-                  - czlogging.LoggingLevel.INFO
-                  - czlogging.LoggingLevel.WARNING
-                  - czlogging.LoggingLevel.ERROR
-                  - czlogging.LoggingLevel.SILENT
-
-    :param colour: If true, use colour in log headers.
-    """
-    global _logger
-    _logger = czlogging.LoggingChannel("czytget.ytconnector", level, colour=colour)
-
-#setLoggingOptions
+_logger = logging.getLogger(__name__)
 
 
-class _YTLogger(logging.Logger):
-    """
-    A logger to pass to yt_dlp.
-    """
-
-    def __init__(self):
-        super().__init__("yt_dlp", level=logging.NOTSET)
-        self._logger = czlogging.LoggingChannel("ytdlp",
-                                                czlogging.LoggingLevel.ERROR,
-                                                colour=True)
-    #__init__
-
-    def info(self, msg, *args, **kwargs):
-        self._logger.info(msg)
-    #info
-
-    def warning(self, msg, *args, **kwargs):
-        self._logger.warning(msg)
-    #warning
-
-    def error(self, msg, *args, **kwargs):
-        self._logger.error(msg)
-    #error
-
-#_YTLogger
+# The logger handed to yt_dlp.  It discards everything: yt_dlp also raises a
+# YoutubeDLError carrying the very same text, and that is what czytget reports.
+# Without this, every failure would be reported twice.
+_ytdlLogger = logging.getLogger("yt_dlp")
+_ytdlLogger.addHandler(logging.NullHandler())
+_ytdlLogger.propagate = False
 
 
 @czcode.autoStr
@@ -106,7 +67,7 @@ class YTConnector:
                        "restrictfilenames": True,
                        "windowsfilenames": True,
                        "writedescription": config.descriptions,
-                       "logger": _YTLogger(),
+                       "logger": _ytdlLogger,
                        "logtostderr": True,
                        "cookiefile": config.cookies,
                        "updatetime": False }
@@ -155,14 +116,15 @@ class YTConnector:
         try:
             exitCode = self._ydl.download([ytCode])
             if exitCode == 0:
-                _logger.info("yt_dlp successfully downloaded", ytCode)
+                _logger.info("yt_dlp successfully downloaded %s", ytCode)
                 return True, ""
             else:
-                _logger.warning("yt_dlp failed to download", ytCode)
+                _logger.warning("yt_dlp failed to download %s", ytCode)
                 return False, "unknown yt_dlp failure"
             #else
         except YoutubeDLError as e:
-            _logger.warning(f"yt_dlp failed to download {ytCode}:", e)
+            # Not logged here: the message is handed to the caller, whose job
+            # it is to report it.
             return False, str(e)
         #except
     #download
@@ -205,13 +167,13 @@ def getYTList(ytCode: str, cookies: str) -> tuple[set | None, str]:
         with contextlib.redirect_stdout(formatInfo):
             with yt_dlp.YoutubeDL(ydlOptions) as ytdl:
                 if ytdl.download([ytCode]) != 0:
-                    _logger.warning("yt_dlp failed to download", ytCode)
+                    _logger.warning("yt_dlp failed to download %s", ytCode)
                     return None, "unknown yt_dlp failure"
                 #if
             #with
         #with
     except YoutubeDLError as e:
-        _logger.warning(f"yt_dlp failed to download {ytCode}:", e)
+        _logger.warning("yt_dlp failed to download %s: %s", ytCode, e)
         return None, str(e)
     #except
 

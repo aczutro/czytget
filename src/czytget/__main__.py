@@ -9,35 +9,77 @@
 # <http://www.gnu.org/licenses>.
 #
 ################################################################### aczutro ###
+
 """
 A simple server to execute multiple parallel download jobs.
 """
+import logging
 import sys
 
-from czutils.utils import czlogging, czsystem, czthreading
+from .client import Client
+from .config import ConfigError, parseConfig
+from .server import Server
 
-from .config import parseConfig, ConfigError, setLoggingOptions as setLoggingOptionsConfig
-from .server import Server, setLoggingOptions as setLoggingOptionsServer
-from .client import Client, setLoggingOptions as setLoggingOptionsClient
+
+_logger = logging.getLogger(__name__)
+
+
+# INFO during development, CRITICAL for releases.
+_logLevel = logging.INFO
+
+
+class CustomFormatter(logging.Formatter):
+    """
+    Logging formatter that prefixes each record with its level and logger name,
+    and colours it according to its severity.
+    """
+    def format(self, record):
+        """
+        Returns the formatted log record.
+        """
+        message = f"{record.levelname.lower()}:{record.name}: {record.getMessage()}"
+        if record.levelno == logging.INFO:
+            return f"\x1b[34;4m{message}\x1b[0m"
+        elif record.levelno == logging.WARNING:
+            return f"\x1b[33;4m{message}\x1b[0m"
+        elif record.levelno == logging.ERROR:
+            return f"\x1b[31;4m{message}\x1b[0m"
+        else:
+            return message
+        #else
+    #format
+#CustomFormatter
+
+
+def _setUpLogging() -> None:
+    """
+    Sets the logging level and message format for the whole application.
+
+    'force' is needed because czutils installs a root handler of its own as
+    soon as it is imported.  Without it, that handler would survive alongside
+    this one, and every record would also be run through czutils' formatter,
+    which raises because czytget's records lack the fields it expects.
+    """
+    handler = logging.StreamHandler()
+    handler.setFormatter(CustomFormatter())
+
+    logging.basicConfig(level=_logLevel,
+                        handlers=[handler],
+                        force=True,
+                        )
+#_setUpLogging
 
 
 def main():
     """
     Main routine of the integrated czytget server/client.
     """
-    logger = czlogging.LoggingChannel(czsystem.appName(),
-                                      czlogging.LoggingLevel.WARNING)
-    #czsystem.setLoggingOptions(czlogging.LoggingLevel.INFO)
-    #czthreading.setLoggingOptions(czlogging.LoggingLevel.INFO)
-    #setLoggingOptionsConfig(czlogging.LoggingLevel.INFO)
-    #setLoggingOptionsClient(czlogging.LoggingLevel.INFO)
-    #setLoggingOptionsServer(czlogging.LoggingLevel.INFO)
-    #setLoggingOptionsYTConnector(czlogging.LoggingLevel.INFO)
+    _setUpLogging()
 
     try:
         serverConfig, clientConfig = parseConfig(".config/czytget")
-        logger.info(serverConfig)
-        logger.info(clientConfig)
+        _logger.info(serverConfig)
+        _logger.info(clientConfig)
 
         server = Server(serverConfig)
         server.start()
@@ -50,11 +92,10 @@ def main():
 
         sys.exit(0)
     except ConfigError as e:
-        logger.error(e)
+        print(f"error: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        logger.error("unexpected exception:", e)
-        #raise e
+        print(f"error: unexpected exception: {e}", file=sys.stderr)
         sys.exit(2)
     #except
 #main

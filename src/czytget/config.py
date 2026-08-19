@@ -13,34 +13,15 @@
 Config and command line parsing for czytget.
 """
 import configparser
+import logging
 import os
 import os.path
 import typing
 
-from czutils.utils import czcode, czlogging, czsystem
+from czutils.utils import czcode, czsystem
 
 
-_logger = czlogging.LoggingChannel("czytget.config",
-                                   czlogging.LoggingLevel.SILENT,
-                                   colour=True)
-
-def setLoggingOptions(level: int, colour=True) -> None:
-    """
-    Sets this module's logging level.  If not called, the logging level is
-    SILENT.
-
-    :param level: One of the following:
-                  - czlogging.LoggingLevel.INFO
-                  - czlogging.LoggingLevel.WARNING
-                  - czlogging.LoggingLevel.ERROR
-                  - czlogging.LoggingLevel.SILENT
-
-    :param colour: If true, use colour in log headers.
-    """
-    global _logger
-    _logger = czlogging.LoggingChannel("czytget.config", level, colour=colour)
-
-#setLoggingOptions
+_logger = logging.getLogger(__name__)
 
 
 class ConfigError(Exception):
@@ -289,7 +270,7 @@ def parseConfig(configDir: str) -> tuple[ServerConfig, ClientConfig]:
     """
     configDirFullPath = czsystem.resolveAbsPath(configDir)
     configFile = os.path.join(configDirFullPath, ".config")
-    _logger.info("parsing file", configFile)
+    _logger.info("parsing file %s", configFile)
 
     if not os.path.exists(configFile):
         return _makeDefaultConfig(configFile)

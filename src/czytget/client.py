@@ -13,35 +13,19 @@
 czytget client
 """
 import cmd
+import logging
 
-from czutils.utils import czlogging, czthreading
+from czutils.utils import czthreading
 
 from .config import ClientConfig
 from .messages import *
+from .notifier import Notifier
 from .server import Server
+from .utils import UIOutput
 
 
-_logger = czlogging.LoggingChannel("czytget.client",
-                                   czlogging.LoggingLevel.SILENT,
-                                   colour=True)
-
-def setLoggingOptions(level: int, colour=True) -> None:
-    """
-    Sets this module's logging level.  If not called, the logging level is
-    SILENT.
-
-    :param level: One of the following:
-                  - czlogging.LoggingLevel.INFO
-                  - czlogging.LoggingLevel.WARNING
-                  - czlogging.LoggingLevel.ERROR
-                  - czlogging.LoggingLevel.SILENT
-
-    :param colour: If true, use colour in log headers.
-    """
-    global _logger
-    _logger = czlogging.LoggingChannel("czytget.client", level, colour=colour)
-
-#setLoggingOptions
+_ui = UIOutput()
+_logger = logging.getLogger(__name__)
 
 
 class Client(czthreading.Thread, cmd.Cmd):
@@ -57,18 +41,66 @@ class Client(czthreading.Thread, cmd.Cmd):
         super().__init__("czytget-client")
         self._config = config
         self._server = server
+        self._notifications: queue.Queue[str] = queue.Queue()
+        self._pending: queue.Queue[str] = queue.Queue()
+        self._notifier = Notifier(self._notifications, self._pending)
 
     #__init__
 
 
     def threadCode(self):
         self.prompt = "\nczytget> "
-        self.intro = "\nIntegrated czytget client"\
-                     "\n=========================\n" \
-                     "\nType 'help' or '?' to list commands."
+        self.intro = ""
+        self._server.comm(MsgSubscribe(self._notifications))
+        self._notifier.start()
+        _ui.info("\nIntegrated czytget client"
+                 "\n========================="
+                 "\n"
+                 "\nType 'help' or '?' to list commands.")
         self.cmdloop()
+        self._notifier.stop()
 
     #threadCode
+
+
+    def precmd(self, line: str) -> str:
+        """
+        Overwrites cmd.Cmd.precmd to show the notifications that arrived while
+        the user was at the prompt, before the command's own output.
+
+        :returns: 'line', unchanged.
+        """
+        self._showNotifications()
+        return line
+    #precmd
+
+
+    def postcmd(self, stop, line):
+        """
+        Overwrites cmd.Cmd.postcmd to show the notifications that arrived while
+        the command was running.  Commands that queue many codes take a long
+        time, and the first failures often arrive before they return.
+
+        :returns: 'stop', unchanged.
+        """
+        self._showNotifications()
+        return stop
+    #postcmd
+
+
+    def _showNotifications(self) -> None:
+        """
+        Prints and discards everything the server has notified about since the
+        last time.
+        """
+        while True:
+            try:
+                _ui.error(self._pending.get(block=False))
+            except queue.Empty:
+                return
+            #except
+        #while
+    #_showNotifications
 
 
     def emptyline(self) -> bool:
@@ -87,36 +119,35 @@ class Client(czthreading.Thread, cmd.Cmd):
         :param arg: ignored
         :returns: False
         """
-        self.stdout.write("\nCommands")
-        self.stdout.write("\n========")
-        self.stdout.write("\n")
-        self.stdout.write("\na CODE [CODE ...]")
-        self.stdout.write("\n        add YT codes to the download list")
-        self.stdout.write("\n")
-        self.stdout.write("\nf FILE [FILE ...]")
-        self.stdout.write("\n        add all YT codes found in files to the download list")
-        self.stdout.write("\n")
-        self.stdout.write("\nl       list queued, processed and finished codes")
-        self.stdout.write("\n")
-        self.stdout.write("\nr       retry: queue all failed codes again")
-        self.stdout.write("\n")
-        self.stdout.write("\nd       discard: empty the queue of failed codes")
-        self.stdout.write("\n")
-        self.stdout.write("\nsls     'Session LS': list previous sessions")
-        self.stdout.write("\n")
-        self.stdout.write("\nsld SESSION [SESSION ...]")
-        self.stdout.write("\n        'Session LoaD': load session SESSION")
-        self.stdout.write("\n")
-        self.stdout.write("\nsla     'Session Load All': load all available sessions")
-        self.stdout.write("\n")
-        self.stdout.write("\nslf     'Session Load Finished': load all available sessions,")
-        self.stdout.write("\n        but only finished codes")
-        self.stdout.write("\n")
-        self.stdout.write("\nslp     'Session Load Pending': load all available sessions,")
-        self.stdout.write("\n        but only unfinished codes")
-        self.stdout.write("\n")
-        self.stdout.write("\nq       terminate the server and the client")
-        self.stdout.write("\n")
+        _ui.info("\nCommands"
+                 "\n========"
+                 "\n"
+                 "\na CODE [CODE ...]"
+                 "\n        add YT codes to the download list"
+                 "\n"
+                 "\nf FILE [FILE ...]"
+                 "\n        add all YT codes found in files to the download list"
+                 "\n"
+                 "\nl       list queued, processed and finished codes"
+                 "\n"
+                 "\nr       retry: queue all failed codes again"
+                 "\n"
+                 "\nd       discard: empty the queue of failed codes"
+                 "\n"
+                 "\nsls     'Session LS': list previous sessions"
+                 "\n"
+                 "\nsld SESSION [SESSION ...]"
+                 "\n        'Session LoaD': load session SESSION"
+                 "\n"
+                 "\nsla     'Session Load All': load all available sessions"
+                 "\n"
+                 "\nslf     'Session Load Finished': load all available sessions,"
+                 "\n        but only finished codes"
+                 "\n"
+                 "\nslp     'Session Load Pending': load all available sessions,"
+                 "\n        but only unfinished codes"
+                 "\n"
+                 "\nq       terminate the server and the client")
         return False # on true, prompt loop will end
 
     #do_help
@@ -135,11 +166,11 @@ class Client(czthreading.Thread, cmd.Cmd):
             response: queue.Queue[str] = queue.Queue(maxsize=1)
             for ytCode in codes:
                 if len(ytCode) == 11:
-                    _logger.info("adding code", ytCode)
+                    _logger.info("adding code %s", ytCode)
                     self._server.comm(MsgAddCode(ytCode, response))
                     self._getResponse(response)
                 elif len(ytCode) == 34:
-                    _logger.info("adding code", ytCode)
+                    _logger.info("adding code %s", ytCode)
                     self._server.comm(MsgAddList(ytCode, response))
                     self._getResponse(response, multiLine=True)
                 else:
@@ -169,7 +200,7 @@ class Client(czthreading.Thread, cmd.Cmd):
                     if len(codes) == 0:
                         self._error(f"file '{file}' is empty")
                     else:
-                        _logger.info("adding file", file)
+                        _logger.info("adding file %s", file)
                         self.do_a(codes)
                     #else
                 except FileNotFoundError:
@@ -243,7 +274,7 @@ class Client(czthreading.Thread, cmd.Cmd):
         else:
             response: queue.Queue[str] = queue.Queue(maxsize=1)
             for session in sessions:
-                _logger.info("loading session", session)
+                _logger.info("loading session %s", session)
                 self._server.comm(MsgLoadSession(session, response))
                 self._getResponse(response)
             #for
@@ -309,28 +340,25 @@ class Client(czthreading.Thread, cmd.Cmd):
         """
         Prints error message.
         """
-        self.stdout.write("ERROR: ")
-        self.stdout.write(' '.join(args))
-        self.stdout.write("\n")
+        _ui.error(' '.join(args))
     #_error
 
 
     def _getResponse(self, responseBuffer: queue.Queue, multiLine=False) -> None:
         """
         Waits for a message (string) to be put into 'responseBuffer' and prints
-        the message to STDOUT.
+        the message to the terminal.
         In case of timeout, prints an error message.
         """
 
         # at least one response string must arrive
         try:
-            self.stdout.write(
+            _ui.info(
                 responseBuffer.get(
                     block = True,
                     timeout = self._config.longResponseTimeout \
                         if multiLine else self._config.responseTimeout
                 ))
-            self.stdout.write("\n")
         except queue.Empty:
             self._error("server response timeout")
         #except
@@ -339,11 +367,10 @@ class Client(czthreading.Thread, cmd.Cmd):
         if multiLine:
             while True:
                 try:
-                    self.stdout.write(
+                    _ui.info(
                         responseBuffer.get(
                             block = True,
                             timeout = self._config.shortResponseTimeout))
-                    self.stdout.write("\n")
                 except queue.Empty:
                     return
                 #except

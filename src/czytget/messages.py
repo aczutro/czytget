@@ -37,10 +37,11 @@ class MsgAck(czthreading.Message):
     """
     Acknowledgement sent by worker thread to server.
     """
-    def __init__(self, ytCode: str, success: bool):
+    def __init__(self, ytCode: str, success: bool, errorMsg: str):
         super().__init__()
         self.ytCode = ytCode
         self.success = success
+        self.errorMsg = errorMsg
     #__init__
 
 #MsgAck
@@ -51,6 +52,19 @@ class MsgAllocate(czthreading.Message):
     Sent by server to self to allocate a task to a free thread.
     """
 #MsgAllocate
+
+
+class MsgSubscribe(czthreading.Message):
+    """
+    Sent by client to server to register the queue over which the server
+    pushes unsolicited notifications to that client.
+    """
+    def __init__(self, notificationBuffer: queue.Queue):
+        super().__init__()
+        self.notificationBuffer = notificationBuffer
+    #__init__
+
+#MsgSubscribe
 
 
 class MsgAddCode(czthreading.Message):

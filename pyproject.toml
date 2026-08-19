@@ -19,10 +19,12 @@ homepage = "https://github.com/aczutro/czytget"
 license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
-python     = "^3.12"
-czutils    = "^1.4.0"
-yt-dlp     = "^2026.7.4"
-yt-dlp-ejs = "^0.8.0"
+python      = "^3.12"
+czutils     = "^1.4.0"
+dbus-python = "^1.4.0"
+notify2     = "^0.3.1"
+yt-dlp      = "^2026.7.4"
+yt-dlp-ejs  = "^0.8.0"
 
 [tool.poetry.dev-dependencies]
 
@@ -33,9 +35,9 @@ czytget = "czytget.__main__:main"
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-# czutils ships no py.typed marker, and yt-dlp has no stubs.
+# These ship no py.typed marker, and have no stubs.
 [[tool.mypy.overrides]]
-module = [ "czutils.*", "yt_dlp.*" ]
+module = [ "czutils.*", "dbus.*", "notify2.*", "yt_dlp.*" ]
 ignore_missing_imports = true
 
 ### aczutro ###################################################################
