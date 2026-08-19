@@ -18,7 +18,7 @@ import os
 import pickle
 import shutil
 
-from czutils.utils import czthreading, cztext
+from czutils.utils import cztext
 
 from . import __version__, __author__
 from .config import ServerConfig

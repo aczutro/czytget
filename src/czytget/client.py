@@ -15,8 +15,6 @@ czytget client
 import cmd
 import logging
 
-from czutils.utils import czthreading
-
 from .config import ClientConfig
 from .messages import *
 from .notifier import Notifier
@@ -161,7 +159,7 @@ class Client(czthreading.Thread, cmd.Cmd):
         """
         codes = args.split()
         if len(codes) == 0:
-            self._error("add: YT code expected")
+            _ui.error("add: YT code expected")
         else:
             response: queue.Queue[str] = queue.Queue(maxsize=1)
             for ytCode in codes:
@@ -174,7 +172,7 @@ class Client(czthreading.Thread, cmd.Cmd):
                     self._server.comm(MsgAddList(ytCode, response))
                     self._getResponse(response, multiLine=True)
                 else:
-                    self._error("bad YT code:", ytCode)
+                    _ui.error(f"bad YT code: {ytCode}")
                 #else
             #for
         #else
@@ -190,7 +188,7 @@ class Client(czthreading.Thread, cmd.Cmd):
         """
         files = args.split()
         if len(files) == 0:
-            self._error("add: filename expected")
+            _ui.error("add: filename expected")
         else:
             for file in files:
                 try:
@@ -198,15 +196,15 @@ class Client(czthreading.Thread, cmd.Cmd):
                         codes = f.read()
                     #with
                     if len(codes) == 0:
-                        self._error(f"file '{file}' is empty")
+                        _ui.error(f"file '{file}' is empty")
                     else:
                         _logger.info("adding file %s", file)
                         self.do_a(codes)
                     #else
                 except FileNotFoundError:
-                    self._error(f"file '{file}' not found")
+                    _ui.error(f"file '{file}' not found")
                 except PermissionError:
-                    self._error(f"no read permission for file '{file}'")
+                    _ui.error(f"no read permission for file '{file}'")
                 #except
             #for
         #else
@@ -270,7 +268,7 @@ class Client(czthreading.Thread, cmd.Cmd):
         """
         sessions = args.split()
         if len(sessions) == 0:
-            self._error("add: YT code expected")
+            _ui.error("add: YT code expected")
         else:
             response: queue.Queue[str] = queue.Queue(maxsize=1)
             for session in sessions:
@@ -348,14 +346,6 @@ class Client(czthreading.Thread, cmd.Cmd):
     #do_q
 
 
-    def _error(self, *args) -> None:
-        """
-        Prints error message.
-        """
-        _ui.error(' '.join(args))
-    #_error
-
-
     def _getResponse(self, responseBuffer: queue.Queue, multiLine=False) -> None:
         """
         Waits for a message (string) to be put into 'responseBuffer' and prints
@@ -372,7 +362,7 @@ class Client(czthreading.Thread, cmd.Cmd):
                         if multiLine else self._config.responseTimeout
                 ))
         except queue.Empty:
-            self._error("server response timeout")
+            _ui.error("server response timeout")
         #except
 
         # additional response strings are optional
