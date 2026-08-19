@@ -324,6 +324,18 @@ class Client(czthreading.Thread, cmd.Cmd):
     #do_slp
 
 
+    def do_EOF(self, _args) -> bool:
+        """
+        Reacts to ^D, which the terminal does not echo, exactly like the QUIT
+        command.
+        :param _args: ignored
+        :return: True
+        """
+        _ui.info("Ctrl-D")
+        return self.do_q("")
+    #do_EOF
+
+
     def do_q(self, _args) -> bool:
         """
         Implements QUIT command.
